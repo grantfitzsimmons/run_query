@@ -20,9 +20,12 @@ def read_query_from_file(file_path):
         return f.read()
 
 def execute_query_on_all_databases(sql_query, output_csv):
+    # ——— truncate or remove any existing export file ———
+    if os.path.exists(output_csv):
+        os.remove(output_csv)
+
     connection = None
     try:
-        # Connect to the MariaDB server
         connection = mysql.connector.connect(
             host     = DB_HOST,
             user     = DB_USER,
@@ -37,9 +40,8 @@ def execute_query_on_all_databases(sql_query, output_csv):
         cursor.execute("SHOW DATABASES;")
         databases = [row[0] for row in cursor.fetchall()]
 
-        # Check if CSV exists (to avoid rewriting headers)
-        file_exists    = os.path.exists(output_csv)
-        header_written = file_exists
+        # Track whether we've written the header yet
+        header_written = False
 
         # Open CSV in append mode
         with open(output_csv, mode='a', newline='', encoding='utf-8') as csvfile:
@@ -57,18 +59,18 @@ def execute_query_on_all_databases(sql_query, output_csv):
                         print(f"No results found in database '{database}'.")
                         continue
 
-                    # Write header if not already done
+                    # write header once
                     if not header_written:
                         col_names = [desc[0] for desc in cursor.description]
                         writer.writerow(['Database', *col_names])
                         header_written = True
 
-                    # Write each row, prefixing with the database name
+                    # write data rows
                     for row in results:
                         writer.writerow([database, *row])
 
                 except Error as e:
-                    print(f"Error executing query on database '{database}': {e}")
+                    print(f"Error on database '{database}': {e}")
 
     except Error as e:
         print(f"Error connecting to MariaDB: {e}")
