@@ -12,6 +12,9 @@ load_dotenv()
 DB_HOST     = os.getenv('DB_HOST')
 DB_USER     = os.getenv('DB_USER')
 DB_PASSWORD = os.getenv('DB_PASSWORD')
+DB_PORT    = os.getenv('DB_PORT', 3306)
+SQL_FILE = os.getenv('SQL_FILE', 'query.sql')
+
 
 # Output directory (relative to where the script is run on the remote server)
 # This should align with the REMOTE_SCRIPT_DIR and potential OUTPUT_DIR setting
