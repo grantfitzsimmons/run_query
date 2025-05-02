@@ -7,25 +7,16 @@ SELECT
   )                                                                 AS DatabaseSizeGB,
   inst.Name                                                        AS InstitutionName,
   d.Name                                                           AS DisciplineName,
-#   COALESCE(tt.Trees, '')                                           AS TaxonTrees,
   c.CollectionName,
   COALESCE(co_stats.NumObjects, 0)                                 AS NumCollectionObjects,
   co_stats.LatestCreated                                           AS LatestCollectionObjectCreated,
   CONCAT_WS(' ', cat_ag.FirstName, cat_ag.LastName)                AS MostCommonCataloger
 FROM
-  collection  AS c
-  JOIN discipline    AS d
+  collection      AS c
+  JOIN discipline AS d
     ON c.DisciplineID = d.UserGroupScopeId
-  LEFT JOIN (
-    SELECT
-      DisciplineID,
-      GROUP_CONCAT(Name ORDER BY Name SEPARATOR ', ')               AS Trees
-    FROM
-      taxontreedef
-    GROUP BY
-      DisciplineID
-  ) AS tt
-    ON d.UserGroupScopeId = tt.DisciplineID
+
+  -- per‐collection counts + newest timestamp
   LEFT JOIN (
     SELECT
       CollectionID,
@@ -37,9 +28,11 @@ FROM
       CollectionID
   ) AS co_stats
     ON c.UserGroupScopeId = co_stats.CollectionID
+
+  -- most common cataloger per collection
   LEFT JOIN (
     SELECT CollectionID, CatalogerID
-    FROM  (
+    FROM (
       SELECT
         CollectionID,
         CatalogerID,
@@ -57,12 +50,16 @@ FROM
     WHERE rn = 1
   ) AS mostcat
     ON c.UserGroupScopeId = mostcat.CollectionID
+
   LEFT JOIN agent AS cat_ag
     ON mostcat.CatalogerID = cat_ag.AgentID
-  JOIN division   AS dv
-    ON d.DivisionID = dv.UserGroupScopeId
+
+  -- link discipline → division → institution
+  JOIN division    AS dv
+    ON d.DivisionID   = dv.UserGroupScopeId
   JOIN institution AS inst
     ON dv.InstitutionID = inst.UserGroupScopeId
+
 ORDER BY
   inst.Name,
   d.Name,
