@@ -1,1 +1,6 @@
 .env
+RetrievedReports/*
+hosting_report.log
+orchestration.log
+*.csv
+venv/*
