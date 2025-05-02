@@ -1,5 +1,4 @@
 SELECT
-  DATABASE()                                                       AS DatabaseName,
   (
     SELECT ROUND(SUM(data_length + index_length) / POWER(1024, 3), 2)
     FROM   information_schema.TABLES
