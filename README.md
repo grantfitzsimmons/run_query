@@ -6,7 +6,7 @@ Execute a SQL query on all databases
 ```zsh
 python3 -m venv venv
 source venv/bin/activate
-pip install mysql-connector-python python-dotenv
+pip install requirements.txt
 ```
 
 Create a .env file in the same directory as this script with the following content:
