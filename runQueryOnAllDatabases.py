@@ -125,16 +125,13 @@ if __name__ == "__main__":
     # Get today's date in YYYY_MM_DD format
     today_formatted = datetime.now().strftime('%Y_%m_%d')
 
-    # Get the DB_HOST value. This should be set in the remote .env file.
-    # If DB_HOST is not set, use a default label or raise an error.
-    db_host_label = DB_HOST if DB_HOST else "unknown_host"
-    # Clean up hostname for filename (e.g., remove periods, slashes)
-    db_host_label = db_host_label.replace('.', '_').replace('/', '_')
+    # Prefer REGION, fall back to DB_HOST if REGION is empty
+    filename_label = REGION or DB_HOST or "unknown"
+    # Clean up the label for filename safety
+    filename_label = filename_label.replace('.', '_').replace('/', '_')
 
-    # Construct the output CSV file name
-    output_csv_filename = f"{db_host_label}_{today_formatted}.csv"
-    # Construct the full output path within the OUTPUT_DIR
-    output_csv_full_path = os.path.join(OUTPUT_DIR, output_csv_filename)
+    output_csv_filename    = f"{filename_label}_{today_formatted}.csv"
+    output_csv_full_path   = os.path.join(OUTPUT_DIR, output_csv_filename)
     # --- End dynamic CSV filename construction ---
 
     # Execute the query on all databases, writing results to the dynamically named CSV
