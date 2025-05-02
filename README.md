@@ -6,7 +6,7 @@ Execute a SQL query on all databases
 ```zsh
 python3 -m venv venv
 source venv/bin/activate
-pip install requirements.txt
+pip install -r  requirements.txt
 ```
 
 Create a .env file in the same directory as this script with the following content:
