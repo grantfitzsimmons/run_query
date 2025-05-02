@@ -136,3 +136,6 @@ if __name__ == "__main__":
 
     # Execute the query on all databases, writing results to the dynamically named CSV
     execute_query_on_all_databases(sql_query, output_csv_full_path)
+    print(f"REPORT_PATH:{output_csv_full_path}")
+
+    
