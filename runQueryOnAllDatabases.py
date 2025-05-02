@@ -8,79 +8,82 @@ import csv
 load_dotenv()
 
 # Database connection parameters
-DB_HOST = os.getenv('DB_HOST')
-DB_USER = os.getenv('DB_USER')
+DB_HOST     = os.getenv('DB_HOST')
+DB_USER     = os.getenv('DB_USER')
 DB_PASSWORD = os.getenv('DB_PASSWORD')
-DB_PORT = int(os.getenv('DB_PORT', 3306))
-SQL_FILE = os.getenv('SQL_FILE')
+DB_PORT     = int(os.getenv('DB_PORT', 3306))
+SQL_FILE    = os.getenv('SQL_FILE')
 
 def read_query_from_file(file_path):
     """Read the SQL query from the specified file."""
-    with open(file_path, 'r') as file:
-        return file.read()
+    with open(file_path, 'r') as f:
+        return f.read()
 
 def execute_query_on_all_databases(sql_query, output_csv):
+    connection = None
     try:
         # Connect to the MariaDB server
         connection = mysql.connector.connect(
-            host=DB_HOST,
-            user=DB_USER,
-            password=DB_PASSWORD,
-            port=DB_PORT
+            host     = DB_HOST,
+            user     = DB_USER,
+            password = DB_PASSWORD,
+            port     = DB_PORT
         )
-        
-        if connection.is_connected():
-            cursor = connection.cursor()
-            # Retrieve all databases
-            cursor.execute("SHOW DATABASES;")
-            databases = cursor.fetchall()
+        if not connection.is_connected():
+            print("Failed to connect to the server.")
+            return
 
-            # Open the CSV file for writing
-            with open(output_csv, mode='w', newline='', encoding='utf-8') as csvfile:
-                csv_writer = csv.writer(csvfile)
+        cursor = connection.cursor()
+        cursor.execute("SHOW DATABASES;")
+        databases = [row[0] for row in cursor.fetchall()]
 
-                for (database,) in databases:
-                    print(f"Executing query on database: {database}")
-                    try:
-                        # Switch to the current database
-                        connection.database = database
-                        # Execute the SQL query
-                        cursor.execute(sql_query)
-                        results = cursor.fetchall()
+        # Check if CSV exists (to avoid rewriting headers)
+        file_exists    = os.path.exists(output_csv)
+        header_written = file_exists
 
-                        # Write results to CSV
-                        if results:
-                            # Write the database name as a header
-                            csv_writer.writerow([f"Results from database: {database}"])
-                            # Write the column headers (if applicable)
-                            column_headers = [i[0] for i in cursor.description]
-                            csv_writer.writerow(column_headers)
-                            # Write the data rows
-                            csv_writer.writerows(results)
-                            csv_writer.writerow([])  # Add a blank line for separation
-                        else:
-                            print(f"No results found in database {database}.")
+        # Open CSV in append mode
+        with open(output_csv, mode='a', newline='', encoding='utf-8') as csvfile:
+            writer = csv.writer(csvfile)
 
-                    except Error as e:
-                        print(f"Error executing query on database {database}: {e}")
+            for database in databases:
+                print(f"Executing query on database: {database}")
+                try:
+                    # Switch to the current database
+                    connection.database = database
+                    cursor.execute(sql_query)
+                    results = cursor.fetchall()
+
+                    if not results:
+                        print(f"No results found in database '{database}'.")
+                        continue
+
+                    # Write header if not already done
+                    if not header_written:
+                        col_names = [desc[0] for desc in cursor.description]
+                        writer.writerow(['Database', *col_names])
+                        header_written = True
+
+                    # Write each row, prefixing with the database name
+                    for row in results:
+                        writer.writerow([database, *row])
+
+                except Error as e:
+                    print(f"Error executing query on database '{database}': {e}")
 
     except Error as e:
         print(f"Error connecting to MariaDB: {e}")
+
     finally:
-        if connection.is_connected():
+        if connection and connection.is_connected():
             cursor.close()
             connection.close()
-            print("MySQL connection is closed.")
+            print("MySQL connection closed.")
 
 if __name__ == "__main__":
-    # Read the SQL query from the file
-    if SQL_FILE:
-        sql_query = read_query_from_file(SQL_FILE)
-        
-        # Construct the output CSV file name based on the SQL file name
-        base_name = os.path.splitext(SQL_FILE)[0]  # Get the base name without extension
-        output_csv = f"{base_name}_output.csv"  # Create the output CSV file name
-        
-        execute_query_on_all_databases(sql_query, output_csv)
+    if not SQL_FILE:
+        print("SQL_FILE not specified in environment.")
     else:
-        print("SQL file not specified in the .env file.")
+        sql_query = read_query_from_file(SQL_FILE)
+        base_name  = os.path.splitext(SQL_FILE)[0]
+        output_csv = f"{base_name}_output.csv"
+        execute_query_on_all_databases(sql_query, output_csv)
