@@ -16,12 +16,8 @@ DB_PORT    = os.getenv('DB_PORT', 3306)
 SQL_FILE = os.getenv('SQL_FILE', 'query.sql')
 REGION = os.getenv('REGION', DB_HOST)
 
-# Output directory (relative to where the script is run on the remote server)
-# This should align with the REMOTE_SCRIPT_DIR and potential OUTPUT_DIR setting
-# used by your orchestrator if you intend to retrieve these files.
-# Let's assume an 'Output' subdirectory within the script directory.
 OUTPUT_DIR = "./Output"
-os.makedirs(OUTPUT_DIR, exist_ok=True) # Ensure the output directory exists
+os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 def read_query_from_file(file_path):
     """Read the SQL query from the specified file."""
