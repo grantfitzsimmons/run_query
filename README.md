@@ -1,5 +1,5 @@
 # run_query
-Execute a SQL query on all databases
+Execute a SQL query on all databases & create automated reports on database statistics.
 
 ## Installation
 
