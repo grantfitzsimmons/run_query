@@ -17,6 +17,7 @@ DB_USER=your_username
 DB_PASSWORD=your_password
 DB_PORT=3306
 SQL_FILE=query.sql (put the name of the query you want to run here)
+REGION=northamerica # This can be any string
 ```
 
 Run the script:
@@ -26,9 +27,10 @@ python3 runQueryOnAllDatabases.py
 ```
 
 
-## Run on remote servers
+## Run Remotely
 
-You can extend the `.env` file to run the `orchestration.py`.
+You can extend the `.env` file to enable the execution of `orchestration.py`, which generates comprehensive reports on all databases. This process pulls the latest version of the repository, updates or installs `python3-venv`, activates the virtual environment, installs the required packages, and then runs `runQueryOnAllDatabases.py` on all databases from the `REMOTE_SCRIPT_DIR`. This assumes that the user you are connecting as (defined in the `SERVERS_JSON` .env variable) is a sudoer who does not need to enter a password to proceed.
+        
 
 ```.env
 # For running queries on remote servers
@@ -39,4 +41,33 @@ LOG_FILE=orchestration.log
 
 # Define SERVERS as a JSON string. Make sure to escape any quotes properly.
 SERVERS_JSON=[{"label":"server-1.example.com","ssh_host":"server-1.example.com","ssh_user":"user1","ssh_key":"~/.ssh/id_rsa"},{"label":"server-2.example.com","ssh_host":"server-2.example.com","ssh_user":"user2","ssh_key":"~/.ssh/id_rsa"},{"label":"server-3.example.com","ssh_host":"server-3.example.com","ssh_user":"user3","ssh_key":"~/.ssh/id_rsa"},{"label":"server-4.example.com","ssh_host":"server-4.example.com","ssh_user":"user4","ssh_key":"~/.ssh/id_rsa"},{"label":"server-5.example.com","ssh_host":"server-5.example.com","ssh_user":"user5","ssh_key":"~/.ssh/id_rsa"},{"label":"server-6.example.com","ssh_host":"server-6.example.com","ssh_user":"user6","ssh_key":"~/.ssh/id_rsa"}]
+```
+
+### Automatic Reports
+
+To run this process on a regular basis, you can create a cronjob to run this on the 1st and 15th of every month. This can be deposited to S3, Google Drive, or similar using [`rclone`](https://github.com/rclone/rclone). Here's an example script that can automate this process (named `run_and_copy.sh` on this system) and log the output:
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+cd /home/ubuntu/run_query
+source venv/bin/activate
+python3 orchestration.py
+
+rclone copy \
+  /home/ubuntu/run_query/RetrievedReports/ \
+  "sccvault:Member Files/Hosting Report" \
+  --progress \
+  --transfers=8 \
+  --checkers=16 \
+  --drive-chunk-size=64M \
+  --drive-upload-cutoff=64M
+```
+
+See the `crontab` configuration:
+
+```crontab
+# m h  dom mon dow   command
+0   3    1,15  *     *     /home/ubuntu/run_query/run_and_copy.sh >> /home/ubuntu/run_query/cron.log 2>&1
 ```
