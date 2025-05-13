@@ -47,6 +47,7 @@ def run_remote_script_and_fetch(cfg):
     remote_commands = [
         f"cd {remote_dir}",
         "git pull",
+        "git switch main",
         "sudo apt update && sudo apt install -y python3-venv",
         "python3 -m venv venv || true",
         "source venv/bin/activate",
