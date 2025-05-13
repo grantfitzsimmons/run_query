@@ -126,7 +126,7 @@ if __name__ == "__main__":
     # Clean up the label for filename safety
     filename_label = filename_label.replace('.', '_').replace('/', '_')
 
-    output_csv_filename    = f"{filename_label}_{today_formatted}.csv"
+    output_csv_filename    = f"{filename_label}_sizes_{today_formatted}.csv"
     output_csv_full_path   = os.path.join(OUTPUT_DIR, output_csv_filename)
     # --- End dynamic CSV filename construction ---
 
