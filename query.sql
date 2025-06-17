@@ -1,37 +1,56 @@
 SELECT
+  -- current database name
+  DATABASE()                                                           AS DatabaseName,
+
   -- total database size in GB
   (
     SELECT ROUND(SUM(data_length + index_length) / POWER(1024, 3), 2)
       FROM information_schema.TABLES
      WHERE table_schema = DATABASE()
-  )                                                          AS DatabaseSizeGB,
+  )                                                                    AS DatabaseSizeGB,
 
-  -- overall object count & latest created date
-  co_stats.NumObjects,
-  co_stats.LatestCreated                                  AS LatestCollectionObjectCreated,
+  inst.Name                                                            AS InstitutionName,
+  d.Name                                                               AS DisciplineName,
 
-  -- most common cataloger across all objects
-  CONCAT_WS(' ', mostcat_ag.FirstName, mostcat_ag.LastName) AS MostCommonCataloger
+  -- comma-separated list of collections with their object counts
+  GROUP_CONCAT(
+    CONCAT(
+      c.CollectionName,
+      ' (',
+      COALESCE(co_stats.NumObjects, 0),
+      ')'
+    )
+    ORDER BY c.CollectionName
+    SEPARATOR ', '
+  )                                                                    AS Collections
 
 FROM
-  -- aggregate total count & latest create timestamp
-  (
+  collection   AS c
+  JOIN discipline AS d
+    ON c.DisciplineID = d.UserGroupScopeId
+
+  -- link discipline → division → institution
+  JOIN division    AS dv
+    ON d.DivisionID = dv.UserGroupScopeId
+  JOIN institution AS inst
+    ON dv.InstitutionID = inst.UserGroupScopeId
+
+  -- per-collection object counts
+  LEFT JOIN (
     SELECT
-      COUNT(*)             AS NumObjects,
-      MAX(TimestampCreated) AS LatestCreated
-      FROM collectionobject
+      CollectionID,
+      COUNT(*) AS NumObjects
+    FROM
+      collectionobject
+    GROUP BY
+      CollectionID
   ) AS co_stats
+    ON c.UserGroupScopeId = co_stats.CollectionID
 
-  -- find the single CatalogerID with highest object count
-  CROSS JOIN (
-    SELECT CatalogerID
-      FROM collectionobject
-     WHERE CatalogerID IS NOT NULL
-     GROUP BY CatalogerID
-     ORDER BY COUNT(*) DESC
-     LIMIT 1
-  ) AS mostcat
+GROUP BY
+  inst.Name,
+  d.Name
 
-  -- join back to agent to get the name
-  LEFT JOIN agent AS mostcat_ag
-    ON mostcat.CatalogerID = mostcat_ag.AgentID;
+ORDER BY
+  inst.Name,
+  d.Name;
