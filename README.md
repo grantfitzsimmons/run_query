@@ -45,7 +45,7 @@ SERVERS_JSON=[{"label":"server-1.example.com","ssh_host":"server-1.example.com",
 
 ### Automatic Reports
 
-To run this process on a regular basis, you can create a cronjob to run this on the 1st and 15th of every month. This can be deposited to S3, Google Drive, or similar using [`rclone`](https://github.com/rclone/rclone). Here's an example script that can automate this process (named `run_and_copy.sh` on this system) and log the output:
+To run this process on a regular basis, you can create a cronjob to run this each Monday. This can be deposited to S3, Google Drive, or similar using [`rclone`](https://github.com/rclone/rclone). Here's an example script that can automate this process (named `run_and_copy.sh` on this system) and log the output:
 
 ```bash
 #!/usr/bin/env bash
@@ -69,5 +69,5 @@ See the `crontab` configuration:
 
 ```crontab
 # m h  dom mon dow   command
-0   3    1,15  *     *     /home/ubuntu/run_query/run_and_copy.sh >> /home/ubuntu/run_query/cron.log 2>&1
+0 3 * * 1 cd /home/ubuntu/run_query && git fetch --prune && for BR in size main; do echo "== Branch: $BR =="; git checkout "$BR" && git pull origin "$BR" && ./run_and_copy.sh; done >> /home/ubuntu/run_query/cron.log 2>&1
 ```
