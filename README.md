@@ -51,10 +51,33 @@ To run this process on a regular basis, you can create a cronjob to run this eac
 #!/usr/bin/env bash
 set -euo pipefail
 
+# 1) Enter project directory
 cd /home/ubuntu/run_query
+
+# 2) Activate virtualenv
 source venv/bin/activate
+
+# 3) Run the orchestration (database reports)
+echo "Running database orchestration..."
 python3 orchestration.py
 
+# 4) Generate asset reports
+echo "Generating asset reports..."
+cd AssetReports
+
+# Run bucket size report
+echo "Generating bucket size report..."
+./size.sh
+
+# Run collection size report
+echo "Generating collection size report..."
+./collection_size.sh
+
+# Return to project root
+cd ..
+
+# 5) Copy database results to remote with rclone
+echo "Copying database reports to Google Drive..."
 rclone copy \
   /home/ubuntu/run_query/RetrievedReports/ \
   "sccvault:Member Files/Hosting Report" \
@@ -63,6 +86,21 @@ rclone copy \
   --checkers=16 \
   --drive-chunk-size=64M \
   --drive-upload-cutoff=64M
+
+# 6) Copy asset reports to remote with rclone
+echo "Copying asset reports to Google Drive..."
+rclone copy \
+  /home/ubuntu/run_query/AssetReports/ \
+  "sccvault:Member Files/Asset Reports" \
+  --include="*.csv" \
+  --progress \
+  --transfers=8 \
+  --checkers=16 \
+  --drive-chunk-size=64M \
+  --drive-upload-cutoff=64M
+
+echo "All reports generated and uploaded successfully!"
+
 ```
 
 See the `crontab` configuration:

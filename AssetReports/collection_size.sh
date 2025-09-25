@@ -38,3 +38,16 @@ for region in br ca eu il us; do # This should be extended if we add more region
 done
 
 echo "Written collection sizes to ${out_file}"
+
+# 5) Copy report to Google Drive using rclone
+echo "Copying ${out_file} to Google Drive..."
+rclone copy \
+  "${out_file}" \
+  "sccvault:Member Files/Asset Reports/" \
+  --progress \
+  --transfers=8 \
+  --checkers=16 \
+  --drive-chunk-size=64M \
+  --drive-upload-cutoff=64M
+
+echo "Report uploaded successfully!"
