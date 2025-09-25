@@ -1,35 +1,45 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Generate today’s date suffix
+# Map your bucket suffix → actual AWS region
+declare -A aws_region=(
+  [br]=sa-east-1      # sp-assets-br
+  [ca]=ca-central-1   # sp-assets-ca
+  [eu]=eu-west-1      # sp-assets-eu
+  [il]=il-central-1   # sp-assets-il
+  [us]=us-east-1      # sp-assets-us
+)
+
+# Date for filename
 today=$(date +%Y_%m_%d)
 out_file="bucket_size_${today}.csv"
 
-# Write CSV header
+# CSV header
 printf "Region,Size(GB)\n" > "${out_file}"
 
-for region in br ca eu il us; do # This should be extended if we add more regions
-  bucket="sp-assets-${region}"
+for suffix in br ca eu il us; do
+  bucket="sp-assets-${suffix}"
+  region="${aws_region[$suffix]}"
 
-  # 1) List every object, recursively, then summarize
-  raw_summary=$(aws s3 ls "s3://${bucket}" \
-                  --recursive \
-                  --summarize)
+  # List objects in the correct region
+  raw=$(aws s3 ls "s3://${bucket}" \
+          --recursive \
+          --summarize \
+          --region "${region}")
 
-  # 2) Extract the "Total Size" value (in bytes)
-  total_bytes=$(awk '/Total Size:/ { print $3 }' <<< "$raw_summary")
+  # Extract total bytes
+  bytes=$(awk '/Total Size:/ {print $3}' <<< "$raw")
 
-  # 3) Convert bytes → GB with 2 decimals
-  size_gb=$(awk -v b="$total_bytes" 'BEGIN { printf("%.2f", b/(1024^3)) }')
+  # Convert to GB (2 decimals)
+  gb=$(awk -v b="$bytes" 'BEGIN{ printf("%.2f", b/(1024^3)) }')
 
-  # 4) Append a CSV row
-  printf "%s,%s\n" "${region}" "${size_gb}" >> "${out_file}"
+  # Append CSV row
+  printf "%s,%s\n" "${suffix}" "${gb}" >> "${out_file}"
 done
 
 echo "Written bucket sizes to ${out_file}"
 
-# 5) Copy report to Google Drive using rclone
-echo "Copying ${out_file} to Google Drive..."
+echo "Uploading report to Google Drive…"
 rclone copy \
   "${out_file}" \
   "sccvault:Member Files/Asset Reports/" \
@@ -39,4 +49,4 @@ rclone copy \
   --drive-chunk-size=64M \
   --drive-upload-cutoff=64M
 
-echo "Report uploaded successfully!"
+echo "Done."

@@ -1,22 +1,34 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Generate today’s date suffix
+# Map your bucket suffix → AWS region
+declare -A aws_region=(
+  [br]=sa-east-1
+  [ca]=ca-central-1
+  [eu]=eu-west-1
+  [il]=il-central-1
+  [us]=us-east-1
+)
+
+# Generate date suffix and output file
 today=$(date +%Y_%m_%d)
 out_file="collection_size_${today}.csv"
 
 # Write CSV header
 printf "Region,Instance,Size(GB)\n" > "${out_file}"
 
-for region in br ca eu il us; do # This should be extended if we add more regions
-  bucket="sp-assets-${region}"
+for suffix in br ca eu il us; do
+  bucket="sp-assets-${suffix}"
+  region="${aws_region[$suffix]}"
 
-  # List objects and sizes, group by top-level prefix, sort, and emit CSV lines
+  # 1) List objects + sizes in correct region
   aws s3api list-objects-v2 \
     --bucket "${bucket}" \
     --query 'Contents[].[Key,Size]' \
     --output text \
+    --region "${region}" \
   | \
+  # 2) Group by first‐level prefix (instance)
   awk '
     {
       split($1, parts, "/")
@@ -29,17 +41,19 @@ for region in br ca eu il us; do # This should be extended if we add more region
       }
     }
   ' \
-  | sort \
-  | while IFS=',' read -r inst total_bytes; do
-      # Convert bytes to GB with 2 decimals
-      size_gb=$(awk -v b="$total_bytes" 'BEGIN{ printf("%.2f", b/(1024^3)) }')
-      printf "%s,%s,%s\n" "${region}" "${inst}" "${size_gb}"
-    done >> "${out_file}"
+  | \
+  sort \
+  | \
+  # 3) Convert to GB, format CSV rows
+  while IFS=',' read -r inst total_bytes; do
+    size_gb=$(awk -v b="$total_bytes" 'BEGIN{ printf("%.2f", b/(1024^3)) }')
+    printf "%s,%s,%s\n" "${suffix}" "${inst}" "${size_gb}"
+  done >> "${out_file}"
 done
 
 echo "Written collection sizes to ${out_file}"
 
-# 5) Copy report to Google Drive using rclone
+# 4) Copy report to Google Drive via rclone
 echo "Copying ${out_file} to Google Drive..."
 rclone copy \
   "${out_file}" \
