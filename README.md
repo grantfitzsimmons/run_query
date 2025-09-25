@@ -71,3 +71,20 @@ See the `crontab` configuration:
 # m h  dom mon dow   command
 0 3 * * 1 cd /home/ubuntu/run_query && git fetch --prune && for BR in size main; do echo "== Branch: $BR =="; git checkout "$BR" && git pull origin "$BR" && ./run_and_copy.sh; done >> /home/ubuntu/run_query/cron.log 2>&1
 ```
+
+
+---
+
+## Asset Usage Reporting
+
+To run daily reports on asset usage, you will need to configure `aws cli` so you can run the `aws s3` commands dynamically.
+
+If new regions are added, we need to extend the `collection_size.sh` and `size.sh` scripts:
+
+```sh
+for region in br ca eu il us; do
+regions
+  bucket="sp-assets-${region}"
+```
+
+This assumes the user executing the script has S3 CLI read-only access to all S3 buckets being queried.
